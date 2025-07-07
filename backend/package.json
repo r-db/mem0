@@ -1,6 +1,8 @@
 {
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.0.1",
     "express": "^4.19.2"
   },
   "name": "backend",

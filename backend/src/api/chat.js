@@ -1,52 +1,46 @@
-const router = require('express').Router();
+    const router = require('express').Router();
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const knowledgeBase = require('../services/knowledgeBase');
 
-// This function contains the simple, rule-based logic for our bot.
-const getBotResponse = (userMessage) => {
-  const message = userMessage.toLowerCase();
+    // Initialize the Gemini client with the API key from the .env file
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-  if (message.includes('hello') || message.includes('hi')) {
-    return 'Hi there! I can help you schedule a demo, answer questions about our services, or connect you with a human. What would you like to do?';
-  }
+    // This is the "briefing document" or system prompt for the AI
+    const systemPrompt = `You are the mim0 Assistant, a professional, helpful AI specializing in human-AI symbiosis. Your knowledge is strictly limited to the information provided below in the 'MIM0 KNOWLEDGE BASE'. You must not use any outside information or your general knowledge. Based *only* on this knowledge, answer the user's question concisely and professionally. If the user's question cannot be answered using the knowledge base, politely state that you do not have information on that topic and offer to connect them with a human expert.
 
-  if (message.includes('demo') || message.includes('schedule')) {
-    return 'I can certainly help with that. To schedule a demo, I just need a little more information. What is your full name and business email address?';
-  }
+    --- MIM0 KNOWLEDGE BASE ---
+    ${knowledgeBase}
+    --- END KNOWLEDGE BASE ---
+    `;
 
-  if (message.includes('services') || message.includes('pilla')) {
-    return 'We specialize in four core areas: AI Venture Incubation, Strategic AI Integration, Efficient Mobile Models, and Philosophical R&D. Which area interests you most?';
-  }
-  
-  if (message.includes('human') || message.includes('agent')) {
-    return 'Of course. Please provide your name and email, and I will have a human colleague contact you within the hour.';
-  }
+    router.post('/', async (req, res) => {
+      try {
+        const userMessage = req.body.message;
 
-  // Default fallback response
-  return "I'm sorry, I'm still in training and don't quite understand that. Could you try rephrasing? You can also ask to speak with a 'human'.";
-};
+        if (!userMessage) {
+          return res.status(400).json({ error: 'No message provided.' });
+        }
 
-// This route handles POST requests to /api/chat
-router.post('/', (req, res) => {
-  try {
-    const userMessage = req.body.message;
+        console.log(`[Chat API] Received message: "${userMessage}"`);
 
-    if (!userMessage) {
-      return res.status(400).json({ error: 'No message provided.' });
-    }
+        // Construct the full prompt for the AI
+        const fullPrompt = `${systemPrompt}\n\nUser Question: ${userMessage}`;
 
-    console.log(`[Chat API] Received message: "${userMessage}"`);
+        // Send the prompt to the Gemini API
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        const botReply = response.text();
 
-    // Get the bot's response
-    const botReply = getBotResponse(userMessage);
+        console.log(`[Chat API] Sending AI reply: "${botReply}"`);
 
-    console.log(`[Chat API] Sending reply: "${botReply}"`);
+        res.status(200).json({ reply: botReply });
 
-    // Send the reply back to the frontend
-    res.status(200).json({ reply: botReply });
+      } catch (error) {
+        console.error('[Chat API] Error processing chat message with Gemini:', error);
+        res.status(500).json({ reply: "I'm experiencing a technical issue at the moment. Please try again shortly." });
+      }
+    });
 
-  } catch (error) {
-    console.error('[Chat API] Error processing chat message:', error);
-    res.status(500).json({ error: 'An internal server error occurred.' });
-  }
-});
-
-module.exports = router;
+    module.exports = router;
+    
