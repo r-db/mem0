@@ -1,23 +1,21 @@
 const express = require('express');
+const cors = require('cors'); // <-- 1. Import the cors package
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Import our API routes
 const leadsRoute = require('./api/leads');
-const chatRoute = require('./api/chat'); // <-- New chat route import
+const chatRoute = require('./api/chat');
 
+// --- Middleware ---
+app.use(cors()); // <-- 2. Tell the app to use the cors middleware
 app.use(express.json());
 
+
 // --- API Routes ---
-
-// Use the leadsRoute for any request that starts with "/api/leads"
 app.use('/api/leads', leadsRoute);
-
-// Use the chatRoute for any request that starts with "/api/chat"
-app.use('/api/chat', chatRoute); // <-- New chat route registration
+app.use('/api/chat', chatRoute);
 
 
-// This is our basic test route
 app.get('/', (req, res) => {
   res.send('Backend server for mimzero.com is running.');
 });
